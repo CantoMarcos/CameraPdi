@@ -8,9 +8,11 @@ import time
 import os
 import socketio
 from collections import deque
+<<<<<<< dev
 #12345
 time.sleep(11)
-
+=======
+<<<<<<<
 # Caminho para o seu arquivo txt
 file_path = 'dados_recebidos.txt'
 config_path = 'config.txt'
