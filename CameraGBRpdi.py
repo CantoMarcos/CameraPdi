@@ -8,7 +8,7 @@ import time
 import os
 import socketio
 from collections import deque
-
+# teste
 time.sleep(10)
 
 # Caminho para o seu arquivo txt
