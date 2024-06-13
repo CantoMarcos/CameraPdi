@@ -9,7 +9,7 @@ import os
 import socketio
 from collections import deque
 #12345
-time.sleep(10)
+time.sleep(11)
 
 # Caminho para o seu arquivo txt
 file_path = 'dados_recebidos.txt'
