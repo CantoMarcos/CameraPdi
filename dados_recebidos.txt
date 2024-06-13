@@ -1,0 +1,5 @@
+op = XXX
+produto = YYY
+subplacas = 3
+quantidade = 100
+cadastroAtivo = True

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Configuração</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); width: 50%; text-align: center; }
+        h1 { margin-bottom: 20px; }
+        form { display: flex; flex-direction: column; align-items: center; }
+        label { margin: 10px 0 5px; width: 100%; text-align: left; }
+        input { padding: 10px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd; width: 100%; }
+        button { padding: 15px; border: none; border-radius: 5px; background-color: #4CAF50; color: white; cursor: pointer; width: 100%; }
+        button:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Configuração</h1>
+        <form id="configForm">
+            <label for="ip">IP:</label>
+            <input type="text" id="ip" name="ip">
+            <label for="porta">Porta:</label>
+            <input type="text" id="porta" name="porta">
+            <button type="button" onclick="submitConfig()">Salvar Configuração</button>
+        </form>
+    </div>
+    <script>
+        function submitConfig() {
+            const configData = {
+                ip: document.getElementById('ip').value,
+                porta: document.getElementById('porta').value
+            };
+
+            fetch('/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(configData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                window.location.href = '/cadastro_page';
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Manipular evento popstate para redirecionar à página de cadastro
+        window.addEventListener('popstate', function(event) {
+            window.location.href = '/cadastro_page';
+        });
+
+        // Adicionar estado de histórico para capturar o evento popstate
+        window.history.pushState({}, '');
+    </script>
+</body>
+</html>

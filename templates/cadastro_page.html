@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cadastro</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; }
+        h1 { text-align: center; }
+        .container { display: flex; justify-content: center; }
+        .box { background: #fff; padding: 20px; margin: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); width: 50%; }
+        form { display: flex; flex-direction: column; }
+        label { margin: 10px 0 5px; }
+        input { padding: 10px; margin-bottom: 20px; border-radius: 5px; border: 1px solid #ddd; }
+        button { padding: 15px; border: none; border-radius: 5px; background-color: #4CAF50; color: white; cursor: pointer; margin-top: 10px; }
+        button:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+    <h1>Cadastro</h1>
+    <div class="container">
+        <div class="box">
+            <form id="cadastroForm">
+                <label for="op">OP:</label>
+                <input type="text" id="op" name="op">
+                <label for="produto">Produto:</label>
+                <input type="text" id="produto" name="produto">
+                <label for="subplacas">Subplacas:</label>
+                <input type="text" id="subplacas" name="subplacas">
+                <label for="quantidade">Quantidade:</label>
+                <input type="text" id="quantidade" name="quantidade">
+                <button type="button" onclick="submitForm()">Cadastrar</button>
+                <button type="button" onclick="window.location.href='/login'">Configuração</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        function submitForm() {
+            const formData = {
+                op: document.getElementById('op').value,
+                produto: document.getElementById('produto').value,
+                subplacas: document.getElementById('subplacas').value,
+                quantidade: document.getElementById('quantidade').value,
+                cadastroAtivo: true
+            };
+
+            fetch('/cadastro', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            })
+            .then(response => response.json())
+            .then(data => alert(data.message))
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Manipular evento popstate para redirecionar à página inicial
+        window.addEventListener('popstate', function(event) {
+            window.location.href = '/';
+        });
+
+        // Adicionar estado de histórico para capturar o evento popstate
+        window.history.pushState({}, '');
+    </script>
+</body>
+</html>

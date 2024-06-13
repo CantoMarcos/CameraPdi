@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dados de Parâmetros e Parada</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; }
+        h1 { text-align: center; }
+        .container { display: flex; flex-direction: column; align-items: center; }
+        .top-layer, .bottom-layer { display: flex; justify-content: space-around; width: 100%; margin-bottom: 20px; }
+        .box { background: #fff; padding: 20px; margin: 10px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        .half-width { width: 45%; }
+        .auto-height { height: auto; }
+        h2 { border-bottom: 2px solid #4CAF50; padding-bottom: 10px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        .error { color: red; }
+        #cameraStream { width: 100%; max-height: 500px; object-fit: contain; border-radius: 8px; margin-top: 20px; }
+        #gaussPlot, #controleXPlot { width: 100%; max-height: 500px; }
+        #controleXPlot { height: 500px; } /* Definindo a altura do gráfico */
+    </style>
+</head>
+<body>
+    <h1>Dados de Parâmetros e Parada</h1>
+    <div class="container">
+        <div class="top-layer">
+            <div class="box half-width">
+                <h2>Camera Stream</h2>
+                <img id="cameraStream" src="" alt="Camera Stream"/>
+                <p id="loadingText">Carregando...</p>
+            </div>
+            <div class="box half-width">
+                <h2>Parâmetros</h2>
+                <table id="dadosParametros">
+                    <tr><th>Campo</th><th>Valor</th></tr>
+                </table>
+                <p class="error" id="erroParametros"></p>
+                <h2>Parada</h2>
+                <table id="dadosParada">
+                    <tr><th>Campo</th><th>Valor</th></tr>
+                </table>
+                <p class="error" id="erroParada"></p>
+            </div>
+        </div>
+        <div class="bottom-layer">
+            <div class="box half-width auto-height">
+                <h2>Estatísticas e Carta de Controle</h2>
+                <table id="dadosEstatisticas">
+                    <tr><th>Campo</th><th>Valor</th></tr>
+                </table>
+                <p class="error" id="erroEstatisticas"></p>
+                <div id="controleXPlot"></div>
+            </div>
+            <div class="box half-width auto-height">
+                <h2>Curva de Gauss</h2>
+                <div id="gaussPlot"></div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+        const nomesAmigaveisParametros = {
+            mac: 'Endereço MAC', 
+            velocidade_linha: 'Velocidade da Linha', 
+            quantidade_placas: 'Quantidade de Placas', 
+            faltam: 'Placas Faltantes', 
+            quantidade_subplacas: 'Quantidade de Subplacas', 
+            is_parada: 'Em Parada'
+        };
+        const nomesAmigaveisParada = {
+            mac: 'Endereço MAC', 
+            is_parada: 'Em Parada', 
+            duracao_parada: 'Duração da Parada (s)'
+        };
+        const nomesAmigaveisEstatisticas = {
+            media: 'Média', 
+            mediana: 'Mediana', 
+            desvio_padrao: 'Desvio Padrão',
+            Cp: 'Cp',
+            Cpk: 'Cpk',
+            Cps: 'Cps',
+            Cpi: 'Cpi'
+        };
+
+        function adicionarLinhaTabela(tabelaId, campo, valor) {
+            const tabela = document.getElementById(tabelaId);
+            const linha = tabela.insertRow();
+            const celulaCampo = linha.insertCell(0);
+            const celulaValor = linha.insertCell(1);
+            celulaCampo.textContent = campo;
+            celulaValor.textContent = valor;
+        }
+
+        function preencherTabela(tabelaId, dados, nomesAmigaveis) {
+            const tabela = document.getElementById(tabelaId);
+            tabela.innerHTML = '<tr><th>Campo</th><th>Valor</th></tr>'; // Limpar tabela
+            for (const [campo, valor] of Object.entries(dados)) {
+                let valorFormatado = valor;
+                if (campo === 'is_parada') {
+                    valorFormatado = valor === true ? 'Sim' : 'Não';
+                }
+                if (!['media', 'mediana', 'desvio_padrao', 'x', 'y', 'tempo_producao', 'LCS_X', 'LCI_X', 'LC', 'amplitude_movel', 'media_amplitude_movel','Cp', 'Cps', 'Cpk', 'Cpi'].includes(campo)) {
+                    const campoAmigavel = nomesAmigaveis[campo] || campo;
+                    adicionarLinhaTabela(tabelaId, campoAmigavel, valorFormatado);
+                }
+            }
+        }
+
+        function preencherEstatisticas(dados) {
+            const tabela = document.getElementById('dadosEstatisticas');
+            tabela.innerHTML = '<tr><th>Campo</th><th>Valor</th></tr>'; // Limpar tabela
+            for (const [campo, valor] of Object.entries(dados)) {
+                if (['media', 'mediana', 'desvio_padrao', 'Cp', 'Cpk', 'Cps', 'Cpi',].includes(campo)) {
+                    const campoAmigavel = nomesAmigaveisEstatisticas[campo] || campo;
+                    adicionarLinhaTabela('dadosEstatisticas', campoAmigavel, valor);
+                }
+            }
+        }
+
+        function atualizarDados() {
+            // Fetch dados de parâmetros
+            fetch('/placas')
+            .then(response => response.json())
+            .then(data => {
+                preencherTabela('dadosParametros', data, nomesAmigaveisParametros);
+                preencherEstatisticas(data);
+
+                // Calcular limites do eixo y
+                const maxY = Math.max(...data.tempo_producao) + 25;
+                const minY = 0;
+
+                // Gerar a curva de Gauss
+                const traceGauss = {
+                    x: data.x,
+                    y: data.y,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { shape: 'spline' },
+                };
+                const layoutGauss = {
+                    title: 'Curva De Gauss',
+                    xaxis: { title: 'Intervalo de Tempo entre Detecções (s)', range: [data.media - 3 * data.desvio_padrao, data.media + 3 * data.desvio_padrao] },
+                    yaxis: { title: 'Frequência' }
+                };
+                Plotly.newPlot('gaussPlot', [traceGauss], layoutGauss);
+
+                // Gerar a carta de controle X
+                const traceX = {
+                    x: Array.from({ length: data.tempo_producao.length }, (_, i) => i + 1),
+                    y: data.tempo_producao,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Valores Individuais'
+                };
+                const LCS_X = Array(data.tempo_producao.length).fill(data.LCS_X);
+                const LCI_X = Array(data.tempo_producao.length).fill(data.LCI_X);
+                const LC = Array(data.tempo_producao.length).fill(data.LC);
+                const traceLCS = {
+                    x: Array.from({ length: data.tempo_producao.length }, (_, i) => i + 1),
+                    y: LCS_X,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'LCS',
+                    line: { dash: 'dash', color: 'red' }
+                };
+                const traceLCI = {
+                    x: Array.from({ length: data.tempo_producao.length }, (_, i) => i + 1),
+                    y: LCI_X,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'LCI',
+                    line: { dash: 'dash', color: 'red' }
+                };
+                const traceLC = {
+                    x: Array.from({ length: data.tempo_producao.length }, (_, i) => i + 1),
+                    y: LC,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'LC',
+                    line: { dash: 'solid', color: 'green' }
+                };
+                const layoutX = {
+                    title: 'Carta de Controle',
+                    xaxis: { title: 'Amostra' },
+                    yaxis: { title: 'Tempo de Produção (s)', range: [minY, maxY] },
+                    height: 500  // Definindo a altura do gráfico
+                };
+                Plotly.newPlot('controleXPlot', [traceX, traceLCS, traceLCI, traceLC], layoutX);
+            })
+            .catch(error => {
+                document.getElementById('erroParametros').textContent = 'Erro ao carregar dados de parâmetros';
+                console.error('Error:', error);
+            });
+
+            // Fetch dados de parada
+            fetch('/parada')
+            .then(response => response.json())
+            .then(data => {
+                preencherTabela('dadosParada', data, nomesAmigaveisParada);
+            })
+            .catch(error => {
+                document.getElementById('erroParada').textContent = 'Erro ao carregar dados de parada';
+                console.error('Error:', error);
+            });
+        }
+
+        setInterval(atualizarDados, 10000); // Atualizar a cada 10 segundos
+
+        const serverUrl = 'http://{ip}:{porta}';
+        const socket = io(serverUrl);
+
+        socket.on('connect', () => {
+            console.log('Conectado ao WebSocket');
+        });
+
+        socket.on('frames', (data) => {
+            console.log('Frame recebido:', data);  // Log recebido
+            const frameData = data.data;
+            const frame = `data:image/jpeg;base64,${frameData}`;
+            document.getElementById('cameraStream').src = frame;
+            document.getElementById('loadingText').style.display = 'none';
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Desconectado do WebSocket');
+        });
+
+        // Inicializa a atualização de dados ao carregar a página
+        document.addEventListener('DOMContentLoaded', atualizarDados);
+    </script>
+</body>
+</html>
